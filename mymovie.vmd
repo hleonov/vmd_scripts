@@ -1,0 +1,52 @@
+#LOAD TCL SCRIPTS ##############################################################
+source /Users/hleonov/vmd_scripts/movie.tcl
+source /Users/hleonov/vmd_scripts/rotation.tcl
+
+#DEFINE THE OUTPUT FILENAME AND DIRECTORY ######################################
+#<outdir> and <project> correspond to arg1 and 2 of the VMD script
+echo "\[ image rendering \] Output directory ....... <[set outdir [lindex $::argv 0]>"
+echo "\[ image rendering \] Project ................ <[set project [lindex $::argv 1]>"
+
+#DEFINE THE REPRESENTATION #####################################################
+#a white background ............................................................
+color Display Background white
+#a cartoon representation ......................................................
+mol delrep 0 top
+mol representation NewCartoon 0.30 20.00 4.10 0
+mol selection      protein
+mol color          SegName
+mol material       Opaque
+mol addrep         top
+mol selupdate 0 top on
+
+#SETUP THE RENDERING PROCESS ###################################################
+#Aspect ratio ..................................................................
+#A 4:3 aspect ratio can be required by MPEG encoders : 640x480, 480x360, etc.
+take_picture w 640
+take_picture h 480
+#the rendering method ..........................................................
+take_picture method Tachyon
+#the template used to name the pictures ........................................
+take_picture template $outdir/$project%04d.jpeg
+#the Tachyon command line ......................................................
+#The next command line is used to take a rendered picture.
+# VMD will generate a temporary tachyon file <tmp.dat>. This file will be
+# rendered in the picture <tmp.tga< (Targa format) and converted in JPEG
+# format by movie.tcl using the template name.
+# WARNING, ImageMagick is required for the conversion!
+# WARNING, It can be necessary to explain the directory where tachyon is installed
+# take_picture bindir /usr/bin/vmd
+take_picture options "$take_picture(bindir)/tachyon_LINUX $take_picture(tmp).dat \
+ -aasamples 8 -trans_vmd -fullshade -o $take_picture(tmp).tga"
+
+
+#ROTATE THE MOLECULE ###########################################################
+#The molecule will be rotate by 360 deg. around the z axis. A picture will be
+#rendered every 0.24 deg.
+rotate_molecule z 360 0.24
+
+#Exit from VMD. Pictures have been created in the <outdir> directory
+#in the proper order : foo0001.jpeg, foo0002.jpeg, foo0003.jpeg, ...
+exit
+
+

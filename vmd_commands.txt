@@ -1,0 +1,176 @@
+logfil vmd.log
+
+this turns the tk menu
+%> menu tkcon on
+
+the following does a PME calcualtion. 
+1st you need to load the charges form the gmx dump file into the 
+b factor column in the pdb
+You can do this using the scirpt:
+%> put_charges_in_pdb.pl system.gmx final.pdb
+
+The load in vmd the rsulting file whcih will be called final_fixed.pdb
+
+select moleucle 0
+%> set sel [atomselect 0 "all"]
+see how many atom you selected
+%> $sel num
+now grab the charges which are in the B coloumn 
+%> $sel set charge [$sel get {beta}]
+to check
+%> $sel get charge
+now run the pme you need to set the corrdinates properly
+
+
+
+If you want you can write the charges out to a file using th sam escript as above and the read the file in
+This might be better for accurecy since there are no numericacd
+cdl erros.
+%> put_charges_in_pdb.pl system.gmx system.pdb
+
+%> set in [open system.pdb_charge_list r]
+assuming you have 56660 atoms in the system
+%> set q_list {}
+assuming you have 56660 atoms in the system
+%> for {set i 0} {$i < 56550} {incr i} {lappend q_list [gets $in]}
+you can check the value of the 1st (or any) element
+%> lindex $q_list 1
+now check to what is the sum of the charges
+%> set total_charge 0; foreach q $q_list {set total_charge [expr $total_charge + $q]}; puts $total_charge
+now grab the charges which are in the B coloumn 
+%> $sel set charge $q_list
+to check
+%> $sel get charge
+
+
+
+calcualting lipid parameters
+to grab the size of the box
+%> molinfo  0 get {a b c}
+
+%> set out [open size.xls w]
+%> for {set i 0} {$i < 1550} {incr i} {molinfo 0 set frame $i; puts $out [molinfo  0 get {a b c}]}
+
+translating the system to build a water box
+
+
+%> set sel [atomselect 0 "all"]
+%> $sel moveby [vecinv [measure center $sel]]
+%> package require solvate
+then get the box dimensions (PME electrostatics will have it)
+
+for the bottom slice:
+whereby 10 is the size of the padding
+In the Min
+
+-x/2, -y/2, -z/2 - 5
+
+In the Max
+
+x/2 y/2 -z/2
+
+run solvate.tcl with:
+%> source solvate.tcl
+%> solvate_top_bottom 7 7
+
+then get the new box sizes by:
+
+%> set sel [atomselect top "type OWS"]
+%> set mm [measure minmax $sel]
+%> vecsub [lindex $mm 1] [lindex $mm 0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+to draw some nice stuff
+
+
+
+
+
+
+%> mol load pdb system_from_em.pdb
+%> animate read xtc system.xtc waitfor all
+
+
+%> protein (x-0)^2+(y-0)^2 > 40 and y > -7
+%> protein (x-+1)^2+(y+1)^2 > 40 and ((x-+1)^2+(y+4)^2 > 40) and ((x-+1)^2+(y+7)^2 > 40) and ((x-+1)^2+(y+10)^2 > 40) and ((x-+1)^2+(y+13)^2 > 40) and ((x-+1)^2+(y+16)^2 > 40) and ((x-+1)^2+(y+19)^2 > 40)
+
+
+%> $sel delete
+%> $sel frame 0
+
+%> set sel [atomselect 0 "all"]
+%> $sel moveby [vecinv [measure center $sel]]
+%> set sel0 [atomselect 0 "all" frame 0]
+%> for {set i 0} {$i < 911} {incr i} {$sel frame $i; set matrix [measure fit $sel $sel0]; $sel move $matrix}
+
+
+
+%> set seig [lsort -uniq [$sel get chain]]
+%> set sel [atomselect top "protein and resid 1 to 110"]
+%> $sel set segname A
+%> $sel set chain A
+%> set sel [atomselect top "protein and resid 111 to 220"]
+%> $sel set chain B
+%> set sel [atomselect top "resname POP"]
+%> $sel set resname POPE
+
+centering stuff
+
+%> set sel_all [atomselect top "all"];set sel [atomselect top "protein"]
+%> set sel [atomselect top "protein"]
+%> set center [measure center $sel]
+to 0 0 0
+%> $sel_all moveby [vecinv $center]
+%> $sel writepdb myname.pdb
+to a center
+%> set point [list 0 0 1]
+%> $sel_all moveby [vecsub $point $center]
+
+
+%> set sel_all [atomselect top "all"]; set sel [atomselect top "protein"]
+%> $sel_all moveby [vecsub [list 27.554 -10.555 0] [measure center $sel]] 
+
+to rotate around and axis
+
+%> set axis [list 0 0 1]
+%> $sel move [transabout  $axis 10]
+
+to fit and move and write the coordinates:
+
+%> set ref [atomselect 0 "protein"]
+%> set sel [atomselect 1 "protein"]
+%> set sel_xtal [atomselect 1 "index 0 to 15788"]
+%> set matrix [measure fit $sel $ref]
+%> $sel_xtal move $matrix
+%> $sel_xtal writepdb xtal_moved.pdb
+
+
+to move it such that the bottom left corner is at 0 0 0 for gromacs
+%> set sel [atomselect top "all"]
+%> $sel moveby [vecinv [lindex [measure minmax $sel] 0]]
+%> $sel writepdb my_moved_pdb.pdb
+
+
+
+
+to run a script (gogetem.tcl) in text mode do:
+%> vmd -dispdev text -e gogetem.tcl
+
+
